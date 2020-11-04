@@ -49,7 +49,7 @@ void append_partial_result(std::vector<in_elt_t> &out_symbols, std::vector<int> 
 	size_t offset = 0;
 
 	if (full_out_symbols.size() > 0 && out_symbols.size() > 0) {
-		size_t prev_full_end{out_symbols.size() - 1};
+		size_t prev_full_end{full_out_symbols.size() - 1};
 		if (full_out_symbols[prev_full_end] == out_symbols[0]) {
 			full_out_counts[prev_full_end] += out_counts[0];
 			offset = 1;
