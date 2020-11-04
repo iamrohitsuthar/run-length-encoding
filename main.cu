@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <vector>
+#include <cstring>
 #include <string>
 #include "hemi/hemi.h"
 #include "hemi/kernel.h"
@@ -208,7 +209,7 @@ void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbol
 
 void parse_input_args(int argc, char* argv[], bool *use_cpu_impl) {
     if(argc > 1) {
-        if(argv[1] == "cpu")
+        if(strcmp(argv[1],"cpu") == 0)
             *use_cpu_impl = true;
         else
             *use_cpu_impl = false;
