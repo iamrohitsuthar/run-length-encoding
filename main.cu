@@ -133,7 +133,7 @@ int main() {
     else
 		std::cout << "Using the GPU implementation" << std::endl;
 
-    cout<<"Creating Input..."<<endl;
+    std::cout<<"Creating Input..."<<std::endl;
     std::vector<in_elt_t> input{};
     input.push_back(1);
     input.push_back(2);
@@ -144,33 +144,33 @@ int main() {
     input.push_back(5);
     input.push_back(5);
 
-    cout<<"Initial Input: "<<endl;
-    cout<<"[";
+    std::cout<<"Initial Input: "<<std::endl;
+    std::cout<<"[";
     for(int i = 0 ; i < input.size() ; i++) {
-        cout<<input[i]<<" ";
+        std::cout<<input[i]<<" ";
     }
-    cout<<"]";
-    cout<<endl;
+    std::cout<<"]";
+    std::cout<<std::endl;
 
     std::vector<in_elt_t> out_symbols{};
 	std::vector<int> out_counts{};
     
     rle(in_owner, out_symbols, out_counts, input_piece_size, use_cpu_impl);
 
-    cout<<"Output Symbols: "<<endl;
-    cout<<"[";
+    std::cout<<"Output Symbols: "<<std::endl;
+    std::cout<<"[";
     for(int i = 0 ; i < out_symbols.size() ; i++) {
-        cout<<out_symbols[i]<<" ";
+        std::cout<<out_symbols[i]<<" ";
     }
-    cout<<"]";
-    cout<<endl;
-    cout<<"Count: "<<endl;
-    cout<<"[";
+    std::cout<<"]";
+    std::cout<<std::endl;
+    std::cout<<"Count: "<<std::endl;
+    std::cout<<"[";
     for(int i = 0 ; i < out_counts.size() ; i++) {
-        cout<<out_counts[i]<<" ";
+        std::cout<<out_counts[i]<<" ";
     }
-    cout<<"]";
-    cout<<endl;
+    std::cout<<"]";
+    std::cout<<std::endl;
 
     return 0;
 }
