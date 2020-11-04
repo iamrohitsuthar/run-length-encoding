@@ -126,6 +126,7 @@ void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbol
 int main(int argc, char *argv[]) {
     bool use_cpu_impl = true;
     size_t input_size = 8;
+    size_t input_piece_size = 4;
 
     if (use_cpu_impl)
 		std::cout<<"Using the CPU implementation"<<std::endl;
@@ -154,7 +155,7 @@ int main(int argc, char *argv[]) {
     std::vector<in_elt_t> out_symbols{};
 	std::vector<int> out_counts{};
     
-    rle(in_owner, out_symbols, out_counts, input_piece_size, use_cpu_impl);
+    rle(input, out_symbols, out_counts, input_piece_size, use_cpu_impl);
 
     std::cout<<"Output Symbols: "<<std::endl;
     std::cout<<"[";
