@@ -3,6 +3,9 @@
 #include <unistd.h>
 #include <vector>
 #include <string>
+#include "hemi/hemi.h"
+#include "hemi/kernel.h"
+#include "hemi/parallel_for.h"
 using in_elt_t = int;
 
 template<typename elt_t>
