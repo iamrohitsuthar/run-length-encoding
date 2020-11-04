@@ -6,6 +6,9 @@
 #include "hemi/hemi.h"
 #include "hemi/kernel.h"
 #include "hemi/parallel_for.h"
+#include "cub/util_allocator.cuh"
+#include "cub/device/device_scan.cuh"
+#include "cub/device/device_run_length_encode.cuh"
 using in_elt_t = int;
 
 template<typename elt_t>
