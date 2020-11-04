@@ -206,10 +206,21 @@ void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbol
 	}
 }
 
+void parse_input_args(int argc, char* argv[], bool *use_cpu_impl) {
+    if(argc > 1) {
+        if(argv[1] == "cpu")
+            use_cpu_impl = true;
+        else
+            use_cpu_impl = false;
+    }
+}
+
 int main(int argc, char *argv[]) {
     bool use_cpu_impl = false;
     size_t input_size = 8;
     size_t input_piece_size = 4;
+
+    parse_input_args(argc, argv, &use_cpu_impl);
 
     if (use_cpu_impl)
 		std::cout<<"Using the CPU implementation"<<std::endl;
@@ -238,7 +249,19 @@ int main(int argc, char *argv[]) {
     std::vector<in_elt_t> out_symbols{};
 	std::vector<int> out_counts{};
     
+    float elapsed_time;
+    cudaEvent_t gpu_start,gpu_stop;
+    cudaEventCreate(&gpu_start);
+    cudaEventCreate(&gpu_stop);
+    cudaEventRecord(gpu_start,0);
+
     rle(input, out_symbols, out_counts, input_piece_size, use_cpu_impl);
+
+    cudaEventRecord(gpu_stop, 0);
+    cudaEventSynchronize(gpu_stop);
+    cudaEventElapsedTime(&elapsed_time, gpu_start, gpu_stop);
+    cudaEventDestroy(gpu_start);
+    cudaEventDestroy(gpu_stop);
 
     std::cout<<"Output Symbols: "<<std::endl;
     std::cout<<"[";
@@ -254,6 +277,8 @@ int main(int argc, char *argv[]) {
     }
     std::cout<<"]";
     std::cout<<std::endl;
+
+    cout<<"Elapsed time is: "<<elapsed_time<<" milliseconds"<<endl;
 
     return 0;
 }
