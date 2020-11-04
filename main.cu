@@ -209,9 +209,9 @@ void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbol
 void parse_input_args(int argc, char* argv[], bool *use_cpu_impl) {
     if(argc > 1) {
         if(argv[1] == "cpu")
-            use_cpu_impl = true;
+            *use_cpu_impl = true;
         else
-            use_cpu_impl = false;
+            *use_cpu_impl = false;
     }
 }
 
@@ -278,7 +278,7 @@ int main(int argc, char *argv[]) {
     std::cout<<"]";
     std::cout<<std::endl;
 
-    cout<<"Elapsed time is: "<<elapsed_time<<" milliseconds"<<endl;
+    std::cout<<"Elapsed time is: "<<elapsed_time<<" milliseconds"<<std::endl;
 
     return 0;
 }
