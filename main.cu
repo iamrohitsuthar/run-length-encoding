@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <vector>
 #include <string>
-using namespace std;
 using in_elt_t = int;
 
 template<typename elt_t>
@@ -124,14 +123,14 @@ void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbol
 	}
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     bool use_cpu_impl = true;
     size_t input_size = 8;
 
     if (use_cpu_impl)
-		std::cout << "Using the CPU implementation" << std::endl;
+		std::cout<<"Using the CPU implementation"<<std::endl;
     else
-		std::cout << "Using the GPU implementation" << std::endl;
+		std::cout<<"Using the GPU implementation"<<std::endl;
 
     std::cout<<"Creating Input..."<<std::endl;
     std::vector<in_elt_t> input{};
