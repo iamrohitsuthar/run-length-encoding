@@ -216,9 +216,31 @@ void parse_input_args(int argc, char* argv[], bool *use_cpu_impl) {
     }
 }
 
+int get_single_digit_rand() {
+	int singleDigit = rand() % 10;
+	return singleDigit;
+}
+
+std::vector<in_elt_t> generate_input(size_t size) {
+    std::vector<in_elt_t> res{};
+    int multiplier = get_single_digit_rand();
+    int value = get_single_digit_rand();
+    for(int i = 0 ; i < size ; i++) {
+        if(multiplier == 0) {
+            multiplier = get_single_digit_rand();
+            value = get_single_digit_rand();
+        }
+        res.push_back(value);
+        multiplier--;
+    }
+    return res;
+}
+
 int main(int argc, char *argv[]) {
+    srand(time(0));
+
     bool use_cpu_impl = false;
-    size_t input_size = 8;
+    size_t input_size = 50;
     size_t input_piece_size = 4;
 
     parse_input_args(argc, argv, &use_cpu_impl);
@@ -228,16 +250,8 @@ int main(int argc, char *argv[]) {
     else
 		std::cout<<"Using the GPU implementation"<<std::endl;
 
-    std::cout<<"Creating Input..."<<std::endl;
-    std::vector<in_elt_t> input{};
-    input.push_back(1);
-    input.push_back(2);
-    input.push_back(3);
-    input.push_back(6);
-    input.push_back(6);
-    input.push_back(6);
-    input.push_back(5);
-    input.push_back(5);
+    std::cout<<"Generating Input..."<<std::endl;
+    std::vector<in_elt_t> input = generate_input(input_size);
 
     std::cout<<"Initial Input: "<<std::endl;
     std::cout<<"[";
