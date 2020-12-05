@@ -4,13 +4,18 @@
 #include <vector>
 #include <cstring>
 #include <string>
+#include <time.h>
 #include "hemi/hemi.h"
 #include "hemi/kernel.h"
 #include "hemi/parallel_for.h"
+#include "hemi/launch.h"
 #include "cub/util_allocator.cuh"
-#include "cub/device/device_scan.cuh"
+#include "cub/device/device_scan.cuh" 
 #include "cub/device/device_run_length_encode.cuh"
 using in_elt_t = int;
+
+float parallel_elapsed_time = 0.0;
+cudaEvent_t gpu_start, gpu_stop;
 
 template<typename elt_t>
 struct array
@@ -116,6 +121,9 @@ void inclusive_prefix_sum(array<uint8_t> d_in, array<int> d_out) {
 
 void paralel_rle_helper(array<in_elt_t> d_in, array<in_elt_t> d_out_symbols, array<int> d_out_counts, array<int> d_end) {
 	auto d_backward_mask = array<uint8_t>::new_on_device(d_in.size);
+	auto d_scanned_backward_mask = array<int>::new_on_device(d_in.size);
+	auto d_compacted_backward_mask = array<int>::new_on_device(d_in.size + 1);
+
 	hemi::parallel_for(0, d_backward_mask.size, [=] HEMI_LAMBDA(size_t i) {
 		if (i == 0) {
 			d_backward_mask.data[i] = 1;
@@ -123,11 +131,7 @@ void paralel_rle_helper(array<in_elt_t> d_in, array<in_elt_t> d_out_symbols, arr
 		}
 		d_backward_mask.data[i] = d_in.data[i] != d_in.data[i - 1];
 	});
-
-	auto d_scanned_backward_mask = array<int>::new_on_device(d_in.size);
-	inclusive_prefix_sum(d_backward_mask, d_scanned_backward_mask);
-
-	auto d_compacted_backward_mask = array<int>::new_on_device(d_in.size + 1);
+	inclusive_prefix_sum(d_backward_mask, d_scanned_backward_mask);	
 	hemi::parallel_for(0, d_in.size, [=] HEMI_LAMBDA(size_t i) {
 		if (i == 0) {
 			d_compacted_backward_mask.data[i] = 0;
@@ -141,7 +145,7 @@ void paralel_rle_helper(array<in_elt_t> d_in, array<in_elt_t> d_out_symbols, arr
 		if (d_backward_mask.data[i])
 			d_compacted_backward_mask.data[out_pos] = i;
 	});
-
+	
 	// Not hemi::parallel_for because d_end is only on the device now.
 	hemi::launch([=] HEMI_LAMBDA() {
 		for (size_t i: hemi::grid_stride_range(0, *d_end.data)) {
@@ -165,7 +169,7 @@ void parallel_rle(array<in_elt_t> in, std::vector<in_elt_t> &out_symbols, std::v
 	auto d_end = array<int>::new_on_device(1);
 
 	checkCuda(cudaMemcpy(d_in.data, in.data, d_in.size * sizeof(*d_in.data), cudaMemcpyHostToDevice));
-
+	
 	paralel_rle_helper(d_in, d_out_symbols, d_out_counts, d_end);
 
 	checkCuda(cudaMemcpy(out_symbols.data(), d_out_symbols.data, out_symbols.size() * sizeof(*out_symbols.data()), cudaMemcpyDeviceToHost));
@@ -181,17 +185,18 @@ void parallel_rle(array<in_elt_t> in, std::vector<in_elt_t> &out_symbols, std::v
 void run_rle_impl(array<in_elt_t> in, std::vector<in_elt_t> &out_symbols, std::vector<int> &out_counts, int &out_end, bool use_cpu_impl) {
 	if (use_cpu_impl)
 		serial_rle(in, out_symbols, out_counts, out_end);
-    else
-        parallel_rle(in, out_symbols, out_counts, out_end);
+  else
+    parallel_rle(in, out_symbols, out_counts, out_end);
 }
 
-void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbols, std::vector<int> &full_out_counts, size_t piece_size, bool use_cpu_impl) {
+void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbols, std::vector<int> &full_out_counts, size_t piece_size, bool use_cpu_impl, bool verbose) {
 	array<in_elt_t> full_in = array<in_elt_t>::vector_view_on_host(in_owner);
 
 	for (size_t start = 0; start < in_owner.size(); start += piece_size) {
 		array<in_elt_t> in = full_in.subview(start, piece_size);
-		std::cout << "Partial in start: " << start
-				  << ", size: " << in.size << std::endl;
+		
+		if(verbose)
+			std::cout << "Partial in start: " << start << ", size: " << in.size << std::endl;
 
 		// TODO Could actually be allocated once
 		std::vector<in_elt_t> out_symbols(in.size);
@@ -207,12 +212,9 @@ void rle(std::vector<in_elt_t> &in_owner, std::vector<in_elt_t> &full_out_symbol
 	}
 }
 
-void parse_input_args(int argc, char* argv[], bool *use_cpu_impl) {
+void parse_input_args(int argc, char* argv[], size_t *input_size) {
     if(argc > 1) {
-        if(strcmp(argv[1],"cpu") == 0)
-            *use_cpu_impl = true;
-        else
-            *use_cpu_impl = false;
+        *input_size = atoi(argv[1]);
     }
 }
 
@@ -238,17 +240,11 @@ std::vector<in_elt_t> generate_input(size_t size) {
 
 int main(int argc, char *argv[]) {
     srand(time(0));
-
-    bool use_cpu_impl = false;
-    size_t input_size = 50;
+    size_t input_size = 10000; //default input size
     size_t input_piece_size = 4;
+    bool verbose = false;
 
-    parse_input_args(argc, argv, &use_cpu_impl);
-
-    if (use_cpu_impl)
-		std::cout<<"Using the CPU implementation"<<std::endl;
-    else
-		std::cout<<"Using the GPU implementation"<<std::endl;
+    parse_input_args(argc, argv, &input_size);
 
     std::cout<<"Generating Input..."<<std::endl;
     std::vector<in_elt_t> input = generate_input(input_size);
@@ -261,22 +257,35 @@ int main(int argc, char *argv[]) {
     std::cout<<"]";
     std::cout<<std::endl;
 
+    std::cout<<"Using the CPU implementation (Serial RLE Version)"<<std::endl;
+
     std::vector<in_elt_t> out_symbols{};
 	std::vector<int> out_counts{};
-    
-    float elapsed_time;
-    cudaEvent_t gpu_start,gpu_stop;
-    cudaEventCreate(&gpu_start);
-    cudaEventCreate(&gpu_stop);
-    cudaEventRecord(gpu_start,0);
 
-    rle(input, out_symbols, out_counts, input_piece_size, use_cpu_impl);
+    rle(input, out_symbols, out_counts, input_piece_size, true, verbose);
 
-    cudaEventRecord(gpu_stop, 0);
-    cudaEventSynchronize(gpu_stop);
-    cudaEventElapsedTime(&elapsed_time, gpu_start, gpu_stop);
-    cudaEventDestroy(gpu_start);
-    cudaEventDestroy(gpu_stop);
+    std::cout<<"Output Symbols: "<<std::endl;
+    std::cout<<"[";
+    for(int i = 0 ; i < out_symbols.size() ; i++) {
+        std::cout<<out_symbols[i]<<" ";
+    }
+    std::cout<<"]";
+    std::cout<<std::endl;
+    std::cout<<"Count: "<<std::endl;
+    std::cout<<"[";
+    for(int i = 0 ; i < out_counts.size() ; i++) {
+        std::cout<<out_counts[i]<<" ";
+    }
+    std::cout<<"]";
+
+    std::cout<<std::endl;
+    std::cout<<"====================================================================="<<std::endl;
+
+	std::cout<<"Using the GPU implementation (Parallel RLE Version)"<<std::endl;
+	out_symbols.clear();
+	out_counts.clear();
+
+	rle(input, out_symbols, out_counts, input_piece_size, false, verbose);
 
     std::cout<<"Output Symbols: "<<std::endl;
     std::cout<<"[";
@@ -292,8 +301,5 @@ int main(int argc, char *argv[]) {
     }
     std::cout<<"]";
     std::cout<<std::endl;
-
-    std::cout<<"Elapsed time is: "<<elapsed_time<<" milliseconds"<<std::endl;
-
     return 0;
 }
