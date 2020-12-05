@@ -124,11 +124,6 @@ void paralel_rle_helper(array<in_elt_t> d_in, array<in_elt_t> d_out_symbols, arr
 	auto d_scanned_backward_mask = array<int>::new_on_device(d_in.size);
 	auto d_compacted_backward_mask = array<int>::new_on_device(d_in.size + 1);
 
-	float elapsed_time = 0.0;
-    cudaEventCreate(&gpu_start);
-    cudaEventCreate(&gpu_stop);
-    cudaEventRecord(gpu_start,0);
-
 	hemi::parallel_for(0, d_backward_mask.size, [=] HEMI_LAMBDA(size_t i) {
 		if (i == 0) {
 			d_backward_mask.data[i] = 1;
@@ -151,11 +146,6 @@ void paralel_rle_helper(array<in_elt_t> d_in, array<in_elt_t> d_out_symbols, arr
 			d_compacted_backward_mask.data[out_pos] = i;
 	});
 	
-	cudaEventRecord(gpu_stop, 0);
-    cudaEventSynchronize(gpu_stop);
-    cudaEventElapsedTime(&elapsed_time, gpu_start, gpu_stop);
-    parallel_elapsed_time = elapsed_time;
-
 	// Not hemi::parallel_for because d_end is only on the device now.
 	hemi::launch([=] HEMI_LAMBDA() {
 		for (size_t i: hemi::grid_stride_range(0, *d_end.data)) {
@@ -270,19 +260,9 @@ int main(int argc, char *argv[]) {
     std::cout<<"Using the CPU implementation (Serial RLE Version)"<<std::endl;
 
     std::vector<in_elt_t> out_symbols{};
-	  std::vector<int> out_counts{};
-    
-    float elapsed_time = 0.0;
-    cudaEvent_t cpu_start,cpu_stop;
-    cudaEventCreate(&cpu_start);
-    cudaEventCreate(&cpu_stop);
-    cudaEventRecord(cpu_start,0);
+	std::vector<int> out_counts{};
 
     rle(input, out_symbols, out_counts, input_piece_size, true, verbose);
-
-    cudaEventRecord(cpu_stop, 0);
-    cudaEventSynchronize(cpu_stop);
-    cudaEventElapsedTime(&elapsed_time, cpu_start, cpu_stop);
 
     std::cout<<"Output Symbols: "<<std::endl;
     std::cout<<"[";
@@ -297,8 +277,6 @@ int main(int argc, char *argv[]) {
         std::cout<<out_counts[i]<<" ";
     }
     std::cout<<"]";
-    std::cout<<std::endl;
-    std::cout<<"Elapsed time is: "<<elapsed_time<<" milliseconds"<<std::endl;
 
     std::cout<<std::endl;
     std::cout<<"====================================================================="<<std::endl;
@@ -323,7 +301,5 @@ int main(int argc, char *argv[]) {
     }
     std::cout<<"]";
     std::cout<<std::endl;
-    std::cout<<"Elapsed time is: "<<parallel_elapsed_time<<" milliseconds"<<std::endl;
-
     return 0;
 }
